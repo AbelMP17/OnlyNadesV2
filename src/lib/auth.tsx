@@ -3,7 +3,11 @@
 
 import { onAuthStateChanged, signInWithPopup, signOut, type User } from "firebase/auth";
 import { createContext, useContext, useEffect, useState } from "react";
-import { auth, googleProvider } from "./firabase";
+// antes: import { auth, googleProvider } from "./firabase";
+// ahora:
+import { getFirebaseAuth, googleProvider } from "./firabase";
+
+
 
 type AuthCtx = {
   user: User | null;
@@ -17,8 +21,10 @@ const Ctx = createContext<AuthCtx | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-
+  
   useEffect(() => {
+    // getFirebaseAuth() lanza error si Firebase no fue inicializado (y así detectamos la configuración)
+    const auth = getFirebaseAuth();
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setLoading(false);
@@ -27,22 +33,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signInGoogle = async () => {
-    try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (err) {
-      console.error("Error en signInGoogle:", err);
-      throw err;
-    }
-  };
+  const auth = getFirebaseAuth();
+  await signInWithPopup(auth, googleProvider);
+};
+const logout = async () => {
+  const auth = getFirebaseAuth();
+  await signOut(auth);
+};
 
-  const logout = async () => {
-    try {
-      await signOut(auth);
-    } catch (err) {
-      console.error("Error en logout:", err);
-      throw err;
-    }
-  };
 
   return (
     <Ctx.Provider value={{ user, loading, signInGoogle, logout }}>

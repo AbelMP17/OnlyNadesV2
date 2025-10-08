@@ -326,6 +326,8 @@ export default function NadeWizard({
       setLoading(false);
       alert("Nade creada: " + id);
       onClose?.();
+      window.location.reload();
+
       try {
         if (router && typeof (router as any).refresh === "function") {
           (router as any).refresh();
