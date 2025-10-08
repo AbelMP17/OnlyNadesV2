@@ -1,0 +1,22 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Colección de mapas
+    match /maps/{id} {
+      allow read: if true;              // cualquiera puede leer
+      allow write: if isSignedIn();     // solo usuarios logueados pueden crear/editar
+    }
+
+    // Colección de nades
+    match /nades/{id} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && request.auth.uid == resource.data.createdByUid;
+    }
+  }
+}

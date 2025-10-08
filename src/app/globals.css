@@ -1,26 +1,89 @@
 @import "tailwindcss";
 
+/* Palette + utilities CS2 (añádelo al final de globals.css) */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --cs-bg: #0b0f12;
+  --cs-surface: #0f1720;
+  --cs-accent: #16d085;
+  --cs-accent-2: #ffb84d;
+  --cs-text: #e6eef1;
+  --cs-muted: #9aa4a7;
+  --cs-glass: rgba(255, 255, 255, 0.04);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+:root, .light {
+  transition: background-color 250ms ease, color 250ms ease;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+
+* {
+  transition: all; 
+  transition-duration: 500ms;
+  cursor: crosshair;
+  user-select: none;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* light variant */
+.light {
+  --cs-bg: #f5f7f8;
+  --cs-surface: #ffffff;
+  --cs-accent: #05664b;
+  --cs-accent-2: #bf6f00;
+  --cs-text: #0b1214;
+  --cs-muted: #475357;
+  --cs-glass: rgba(0, 0, 0, 0.04);
+}
+
+/* page / card styles */
+.cs-page {
+  background: linear-gradient(180deg, var(--cs-bg) 0%, #081017 100%);
+  color: var(--cs-text);
+  min-height: 100vh;
+}
+
+.cs-card {
+  background-color: var(--cs-surface);
+  color: var(--cs-text);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.theme-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03),
+    rgba(0, 0, 0, 0.03)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  color: var(--cs-text);
+}
+
+:hover.theme-toggle-btn{
+    padding-inline: 15px;
+    border: 1px solid white
+}
+
+.map-badge {
+  padding: 6px 10px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--cs-text);
+  font-weight: 600;
+}
+.cs-text-shadow {
+  text-shadow: 0 6px 18px rgba(0, 0, 0, 0.7);
+}
+
+:hover.nm-button{
+  padding-inline: 20px;
+  opacity: 0.6;
+  border-radius: 100px;
+}
+
+option {
+  color: black;
 }
