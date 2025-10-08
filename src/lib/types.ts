@@ -1,4 +1,6 @@
 // src/lib/types.ts
+import type { Timestamp } from "firebase/firestore";
+
 export type MapDoc = {
   id: string;
   slug: string;
@@ -37,5 +39,5 @@ export type NadeDoc = {
   precision?: Precision | null;
   createdByUid?: string;
   createdByName?: string;
-  createdAt?: any;
+  createdAt?: Timestamp | null;
 };

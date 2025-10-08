@@ -3,6 +3,7 @@
 
 import React from "react";
 import type { NadeDoc } from "@/lib/types";
+import Image from "next/image";
 
 export default function MarkerPreview({
   nade,
@@ -51,9 +52,9 @@ export default function MarkerPreview({
             />
           ) : isYouTubeVideo ? (
             useThumbForYouTube ? (
-              <img
+              <Image
                 src={youtubeThumbFromId(youtubeId!)}
-                alt={nade.title}
+                alt="imagen de youtube"
                 className="w-full h-full object-cover"
               />
             ) : (
@@ -66,11 +67,7 @@ export default function MarkerPreview({
                 loading="lazy"
               />
             )
-          ) : nade.imageUrl ? (
-            <img src={nade.imageUrl} alt={nade.title} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-xs text-neutral-400">No media</div>
-          )}
+          ) : null}
         </div>
 
         <div className="p-2 text-xs capitalize">

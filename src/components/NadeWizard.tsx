@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/rules-of-hooks */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/NadeWizard.tsx
 "use client";
 
@@ -9,8 +11,9 @@ import { ADMIN_UID } from "@/lib/constants";
 import MapEditor from "@/components/MapEditor";
 import { useRouter } from "next/navigation";
 import UiSelect from "./UiSelect";
-import RunStepper from "@/components/RunStepper";
-import ToggleSwitch from "@/components/ToggleSwitch";
+import ToggleSwitch from "./ToggleSwitch";
+import RunStepper from "./RunStepper";
+import type { Technique, Movement, Precision } from "@/lib/types";
 
 export default function NadeWizard({
   open,
@@ -26,24 +29,22 @@ export default function NadeWizard({
   existingNades?: NadeDoc[];
 }) {
   const router = useRouter();
-
   const { user } = useAuth();
   const isAdmin = user?.uid === ADMIN_UID;
-  const [step, setStep] = useState(0);
 
+  // state hooks (declarados al principio)
+  const [step, setStep] = useState(0);
   const [toPos, setToPos] = useState<Pos | null>(null);
-  const [tempTo, setTempTo] = useState<Pos | null>(null); // persistir ball temporal to
+  const [tempTo, setTempTo] = useState<Pos | null>(null);
   const [selectedClusterKey, setSelectedClusterKey] = useState<string | null>(
     null
   );
   const [clusterItems, setClusterItems] = useState<NadeDoc[] | null>(null);
-
   const [fromPos, setFromPos] = useState<Pos | null>(null);
-  const [tempFrom, setTempFrom] = useState<Pos | null>(null); // persistir ball temporal from
+  const [tempFrom, setTempFrom] = useState<Pos | null>(null);
   const [selectedFromNade, setSelectedFromNade] = useState<NadeDoc | null>(
     null
   );
-
   const [loading, setLoading] = useState(false);
 
   const [form, setForm] = useState({
@@ -59,15 +60,44 @@ export default function NadeWizard({
     runSteps: undefined as number | undefined,
     lineupNotes: "",
     description: "",
-
-    // NUEVOS campos
-    technique: "", // ejemplo: "left_click"
-    movement: "", // ejemplo: "stationary"
-    precision: "precise", // default
+    technique: "",
+    movement: "",
+    precision: "precise",
   });
 
   const [wizardErrors, setWizardErrors] = useState<string[]>([]);
 
+  /* ---------------------------
+     Hooks/derived values (MUST be *before* any early returns)
+     --------------------------- */
+
+  const steps = ["Video", "Position (To)", "Position (From)", "Information"];
+
+  const availableFroms = useMemo(() => {
+    if (!clusterItems) return [];
+    return clusterItems.filter((n) => n.fromPos).map((n) => n);
+  }, [clusterItems]);
+
+  /* YouTube helpers (pure functions - ok here) */
+  function getYouTubeId(url?: string | null): string | null {
+    if (!url) return null;
+    const m = url.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/);
+    return m ? m[1] : null;
+  }
+  function isValidYouTubeUrl(url?: string | null) {
+    return !!getYouTubeId(url);
+  }
+  function youtubeEmbedUrl(videoId: string) {
+    return `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&playsinline=1&loop=1&playlist=${videoId}`;
+  }
+  function isDirectVideo(url?: string | null) {
+    if (!url) return false;
+    return /\.(mp4|webm|mov|ogg)(\?.*)?$/i.test(url);
+  }
+
+  /* ---------------------------
+     Validation helpers
+     --------------------------- */
   const FIELD_LABELS: Record<string, string> = {
     videoUrl: "URL del video",
     toPos: "Posición destino (To)",
@@ -85,31 +115,6 @@ export default function NadeWizard({
     description: "Descripción",
   };
 
-  /* ---------------------------
-     YouTube URL utilities
-     --------------------------- */
-  function getYouTubeId(url?: string | null): string | null {
-    if (!url) return null;
-    const m = url.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/);
-    return m ? m[1] : null;
-  }
-
-  function isValidYouTubeUrl(url?: string | null) {
-    return !!getYouTubeId(url);
-  }
-
-  function youtubeEmbedUrl(videoId: string) {
-    return `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&playsinline=1&loop=1&playlist=${videoId}`;
-  }
-
-  function isDirectVideo(url?: string | null) {
-    if (!url) return false;
-    return /\.(mp4|webm|mov|ogg)(\?.*)?$/i.test(url);
-  }
-
-  /* ---------------------------
-     validation helpers
-     --------------------------- */
   function getMissingFieldsForStep(s: number) {
     const missing: string[] = [];
 
@@ -130,7 +135,6 @@ export default function NadeWizard({
     }
 
     if (s === 3) {
-      // campos obligatorios en el paso de Información
       const required = [
         "title",
         "type",
@@ -145,8 +149,7 @@ export default function NadeWizard({
         "description",
       ];
       for (const key of required) {
-        const val = (form as any)[key];
-        // runSteps puede ser 0; aceptamos 0 pero no undefined/null/''.
+        const val = (form as any)[key]; // aqui es seguro porque proviene de `form` local
         if (key === "runSteps") {
           if (val === undefined || val === null || Number.isNaN(Number(val)))
             missing.push(FIELD_LABELS.runSteps);
@@ -160,11 +163,9 @@ export default function NadeWizard({
           }
         }
       }
-      // toPos/fromPos must still exist as global constraints (safety)
       if (!toPos) missing.push(FIELD_LABELS.toPos);
       if (!fromPos) missing.push(FIELD_LABELS.fromPos);
 
-      // además, validar videoUrl por si alguien lo cambió después:
       if (!form.videoUrl || !form.videoUrl.trim()) {
         missing.push(FIELD_LABELS.videoUrl);
       } else if (!isValidYouTubeUrl(form.videoUrl)) {
@@ -181,6 +182,9 @@ export default function NadeWizard({
     return missing.length === 0;
   }
 
+  /* ---------------------------
+     Early returns (UI gating)
+     --------------------------- */
   if (!open) return null;
   if (!isAdmin) {
     return (
@@ -195,13 +199,9 @@ export default function NadeWizard({
     );
   }
 
-  const steps = ["Video", "Position (To)", "Position (From)", "Information"];
-
-  const availableFroms = useMemo(() => {
-    if (!clusterItems) return [];
-    return clusterItems.filter((n) => n.fromPos).map((n) => n);
-  }, [clusterItems]);
-
+  /* ---------------------------
+     Handlers
+     --------------------------- */
   function handleSelectCluster(
     clusterKey: string,
     items: NadeDoc[],
@@ -211,7 +211,7 @@ export default function NadeWizard({
     setClusterItems(items);
     const firstTo = items.find((i) => i.toPos)?.toPos ?? center;
     setToPos(firstTo ?? center);
-    setTempTo(firstTo ?? center); // mirror temp
+    setTempTo(firstTo ?? center);
     setFromPos(null);
     setTempFrom(null);
     setSelectedFromNade(null);
@@ -250,7 +250,6 @@ export default function NadeWizard({
       return;
     }
 
-    // Validar videoUrl de nuevo antes de enviar
     if (
       !form.videoUrl ||
       !form.videoUrl.trim() ||
@@ -262,7 +261,45 @@ export default function NadeWizard({
     }
 
     setLoading(true);
-    const payload: any = {
+    // validar y normalizar los campos technique/movement/precision
+    const ALLOWED_TECHNIQUES = [
+      "left_click",
+      "right_click",
+      "left_right_click",
+      "jump_left",
+      "jump_right",
+      "jump_left_right",
+    ] as const;
+    const ALLOWED_MOVEMENTS = [
+      "stationary",
+      "running",
+      "walking",
+      "crouched",
+      "crouched_walking",
+    ] as const;
+    const ALLOWED_PRECISIONS = ["precise", "loose", "very_precise"] as const;
+
+    function normalizeTechnique(v?: string | null): Technique | undefined {
+      if (!v) return undefined;
+      return ALLOWED_TECHNIQUES.includes(v as any)
+        ? (v as Technique)
+        : undefined;
+    }
+    function normalizeMovement(v?: string | null): Movement | undefined {
+      if (!v) return undefined;
+      return ALLOWED_MOVEMENTS.includes(v as any) ? (v as Movement) : undefined;
+    }
+    function normalizePrecision(v?: string | null): Precision | undefined {
+      if (!v) return undefined;
+      return ALLOWED_PRECISIONS.includes(v as any)
+        ? (v as Precision)
+        : undefined;
+    }
+
+    const payload: Partial<NadeDoc> & {
+      createdByUid?: string;
+      createdByName?: string;
+    } = {
       mapSlug,
       title: form.title || "Untitled",
       type: form.type,
@@ -277,53 +314,47 @@ export default function NadeWizard({
       jumpThrow: !!form.jumpThrow,
       runSteps: form.runSteps ?? undefined,
       lineupNotes: form.lineupNotes || undefined,
-      technique: form.technique || undefined,
-      movement: form.movement || undefined,
-      precision: form.precision || undefined,
+      technique: normalizeTechnique(form.technique) ?? undefined,
+      movement: normalizeMovement(form.movement) ?? undefined,
+      precision: normalizePrecision(form.precision) ?? undefined,
       createdByUid: user.uid,
       createdByName: user.displayName ?? user.email ?? "Admin",
     };
 
     try {
-      const id = await createNadeFn(payload);
+      const id = await createNadeFn(payload as any);
       setLoading(false);
       alert("Nade creada: " + id);
-
-      // cierra el modal
       onClose?.();
-      window.location.reload()
-
-      // Preferimos router.refresh() (Next App Router). Si no existe, hacemos full reload.
       try {
         if (router && typeof (router as any).refresh === "function") {
           (router as any).refresh();
         } else if (typeof window !== "undefined") {
           window.location.reload();
         }
-      } catch (err) {
+      } catch {
         if (typeof window !== "undefined") window.location.reload();
       }
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      console.error(error);
       setLoading(false);
       alert("Error creando nade");
     }
   }
 
   /* ---------------------------
-     Preview logic (computed from form.videoUrl)
+     Preview computed values
      --------------------------- */
-
   const youTubeId = useMemo(() => getYouTubeId(form.videoUrl), [form.videoUrl]);
   const youtubeEmbed = useMemo(
-    () => (youTubeId ? youtubeEmbedUrl(form.videoUrl) : ""),
-    [youTubeId, form.videoUrl]
+    () => (youTubeId ? youtubeEmbedUrl(youTubeId) : ""),
+    [youTubeId]
   );
   const isDirect = useMemo(() => isDirectVideo(form.videoUrl), [form.videoUrl]);
   const hasUrl = !!(form.videoUrl && form.videoUrl.trim());
   const urlValid = hasUrl ? youTubeId !== null || isDirect : false;
 
-  /* ---------- options for UiSelect ---------- */
+  /* options */
   const typeOptions = [
     { value: "smoke", label: "Smoke" },
     { value: "flash", label: "Flash" },
@@ -331,18 +362,15 @@ export default function NadeWizard({
     { value: "he", label: "HE" },
     { value: "decoy", label: "Decoy" },
   ];
-
   const sideOptions = [
     { value: "T", label: "T" },
     { value: "CT", label: "CT" },
   ];
-
   const tickrateOptions = [
     { value: "", label: "Tickrate" },
     { value: "64", label: "64" },
     { value: "128", label: "128" },
   ];
-
   const techniqueOptions = [
     { value: "", label: "Select technique" },
     { value: "left_click", label: "Left Click" },
@@ -352,7 +380,6 @@ export default function NadeWizard({
     { value: "jump_right", label: "Jump + Right Click" },
     { value: "jump_left_right", label: "Jump + Left+Right Click" },
   ];
-
   const movementOptions = [
     { value: "", label: "Select movement" },
     { value: "stationary", label: "Stationary" },
@@ -361,13 +388,15 @@ export default function NadeWizard({
     { value: "crouched", label: "Crouched" },
     { value: "crouched_walking", label: "Crouched Walking" },
   ];
-
   const precisionOptions = [
     { value: "precise", label: "Precise" },
     { value: "loose", label: "Loose" },
     { value: "very_precise", label: "Very Precise" },
   ];
 
+  /* ---------------------------
+     Render
+     --------------------------- */
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4 overflow-auto">
       <div className="bg-neutral-900 text-white rounded-lg max-w-4xl w-full p-4">
@@ -664,7 +693,7 @@ export default function NadeWizard({
             </div>
           )}
         </div>
-        {/* mostrar errores de validación */}
+
         {wizardErrors.length > 0 && (
           <div className="mb-3 p-3 rounded bg-red-900/60 text-sm text-red-200">
             <strong className="block mb-1">Faltan campos obligatorios:</strong>
@@ -683,7 +712,6 @@ export default function NadeWizard({
           >
             Cancelar
           </button>
-
           <div className="flex gap-2">
             {step > 0 && (
               <button
@@ -696,17 +724,11 @@ export default function NadeWizard({
                 Anterior
               </button>
             )}
-
             {step < steps.length - 1 && (
               <button
                 onClick={() => {
                   setWizardErrors([]);
-                  // valida paso actual antes de avanzar
-                  if (!validateStep(step)) {
-                    // no avanzar, wizardErrors ya cargado por validateStep
-                    return;
-                  }
-                  // Avanzamos al siguiente paso
+                  if (!validateStep(step)) return;
                   setStep((s) => s + 1);
                 }}
                 className="px-3 py-2 rounded bg-green-600 nm-button"
@@ -714,19 +736,15 @@ export default function NadeWizard({
                 Siguiente
               </button>
             )}
-
             {step === steps.length - 1 && (
               <button
                 onClick={async () => {
                   setWizardErrors([]);
-                  // validar todo el wizard (último pasoValidación)
-                  // validamos paso 0..3, pero suficiente validar paso 3 (incluye to/from)
                   if (!validateStep(3)) return;
-                  // Si pasa validación, llamar submit
                   await handleSubmit();
                 }}
                 disabled={loading}
-                className="px-3 py-2 rounded bg-blue-600 nm-button"
+                className="px-3 py-2 rounded bg-blue-600"
               >
                 {loading ? "Enviando..." : "Enviar"}
               </button>

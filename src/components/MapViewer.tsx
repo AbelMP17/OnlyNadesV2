@@ -52,20 +52,24 @@ export default function MapViewer({ mapImage, nades, hoverPreview, onOpenNade }:
   function handleClusterClick(cluster: Cluster, e: React.MouseEvent) {
     e.stopPropagation();
     if (expandedKey === cluster.key) {
+      // cerrar expansión
       setExpandedKey(null);
       setExpandedItems([]);
       return;
     }
+    // expandir solo este cluster y ocultar los demás (clustersToRender lo hará)
     setExpandedKey(cluster.key);
     setExpandedItems(cluster.items);
-    // NO mostramos preview al clicar el cluster: preview solo para froms
-    // Si quieres volver a mostrar preview aquí, añade hoverPreview?.(...)
+    // no mostramos preview aquí; preview solo para fromPos
   }
 
   function handleOriginClick(n: NadeDoc, e: React.MouseEvent) {
     e.stopPropagation();
     onOpenNade?.(n);
   }
+
+  // Si hay un cluster expandido, solo renderizamos ese cluster; si no, todos.
+  const clustersToRender = expandedKey ? clusters.filter((c) => c.key === expandedKey) : clusters;
 
   return (
     <div
@@ -101,12 +105,11 @@ export default function MapViewer({ mapImage, nades, hoverPreview, onOpenNade }:
           })()}
       </svg>
 
-      {/* clusters (badges grandes) — SIN preview en hover */}
-      {clusters.map((c) => (
+      {/* clusters (badges grandes) — si hay uno seleccionado, los demás estarán ocultos por clustersToRender */}
+      {clustersToRender.map((c) => (
         <div
           key={c.key}
           onClick={(e) => handleClusterClick(c, e)}
-          // no hoverPreview aquí: solo expandimos al click
           style={{ left: `${c.x}%`, top: `${c.y}%`, transform: "translate(-50%,-50%)" }}
           className="absolute z-30 cursor-pointer select-none"
           data-role="map-marker"
@@ -117,7 +120,7 @@ export default function MapViewer({ mapImage, nades, hoverPreview, onOpenNade }:
         </div>
       ))}
 
-      {/* origin markers (fromPos) — AQUI sí mostramos preview en hover */}
+      {/* origin markers (fromPos) — solo los expandedItems se muestran (si hay expansión), y sobre ellos mostramos preview en hover */}
       {(expandedItems.length > 0 ? expandedItems : []).map((n) => {
         if (!n.fromPos) return null;
         return (
@@ -125,7 +128,6 @@ export default function MapViewer({ mapImage, nades, hoverPreview, onOpenNade }:
             key={n.id}
             onClick={(e) => handleOriginClick(n, e)}
             onPointerEnter={() => {
-              // show preview centered at the origin marker initially
               const client = percentToClient(n.fromPos!);
               hoverPreview?.(n, client);
             }}
@@ -138,7 +140,7 @@ export default function MapViewer({ mapImage, nades, hoverPreview, onOpenNade }:
             className="absolute z-40 cursor-pointer select-none"
             data-role="map-marker"
           >
-            <div className={`w-4 h-4 rounded-full ${n.side === "ct" ? "bg-blue-800" : "bg-orange-400" } bg-blue-800/90 border-2 border-black shadow flex items-center justify-center text-xs font-semibold text-black`}></div>
+            <div className={`w-4 h-4 rounded-full ${n.side?.toLowerCase() === "ct" ? "bg-blue-800" : "bg-orange-400"} border-2 border-black shadow flex items-center justify-center text-xs font-semibold text-black`}></div>
           </div>
         );
       })}

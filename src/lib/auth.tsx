@@ -1,6 +1,7 @@
+// src/lib/auth.tsx
 "use client";
 
-import { onAuthStateChanged, signInWithPopup, signOut, User } from "firebase/auth";
+import { onAuthStateChanged, signInWithPopup, signOut, type User } from "firebase/auth";
 import { createContext, useContext, useEffect, useState } from "react";
 import { auth, googleProvider } from "./firabase";
 
@@ -11,25 +12,36 @@ type AuthCtx = {
   logout: () => Promise<void>;
 };
 
-const Ctx = createContext<AuthCtx>({} as any);
+const Ctx = createContext<AuthCtx | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    return onAuthStateChanged(auth, (u) => {
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setLoading(false);
     });
+    return unsubscribe;
   }, []);
 
   const signInGoogle = async () => {
-    await signInWithPopup(auth, googleProvider);
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (err) {
+      console.error("Error en signInGoogle:", err);
+      throw err;
+    }
   };
 
   const logout = async () => {
-    await signOut(auth);
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.error("Error en logout:", err);
+      throw err;
+    }
   };
 
   return (
@@ -39,4 +51,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export const useAuth = () => useContext(Ctx);
+/**
+ * useAuth — hook consumidor
+ * Lanza un error claro si se usa fuera de un AuthProvider.
+ * Esto hace que llamar `const { user } = useAuth()` sea seguro y tipado.
+ */
+export const useAuth = (): AuthCtx => {
+  const ctx = useContext(Ctx);
+  if (!ctx) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return ctx;
+};

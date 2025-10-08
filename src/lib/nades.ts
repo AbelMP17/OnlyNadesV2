@@ -26,12 +26,11 @@ export async function getNade(id: string): Promise<NadeDoc | null> {
 }
 
 
-export async function createNade(payload: Partial<any>) {
+export async function createNade(payload: Partial<NadeDoc>) {
   const ref = await addDoc(collection(db, "nades"), {
     ...payload,
     createdAt: Date.now(),
-    updatedAt: Date.now(),
-    votes: payload.votes ?? 0,
+    updatedAt: Date.now()
   });
   return ref.id;
 }
