@@ -4,6 +4,8 @@
 import React from "react";
 import type { NadeDoc, Pos } from "@/lib/types";
 import { useTheme } from "@/context/ThemeContext";
+import { useAuth } from "@/lib/auth";
+import { useFavorites } from "@/hooks/useFavorites";
 
 export default function NadeModal({
   nade,
@@ -13,6 +15,9 @@ export default function NadeModal({
   onClose: () => void;
 }) {
   const { theme } = useTheme();
+  const { user } = useAuth();
+  const uid = user?.uid ?? null;
+  const { isFavorite, toggleFavorite } = useFavorites(uid);
 
   /* --------------------
      Helpers tipados
@@ -59,16 +64,46 @@ export default function NadeModal({
   }
 
   function formatDate(d: unknown) {
-    if (!d) return "—";
+    if (d == null) return "—";
     try {
+      // Tipado seguro para posibles formas de timestamp de Firestore / number / string
+      type MaybeTimestamp = {
+        toDate?: () => Date;
+        toMillis?: () => number;
+        seconds?: number;
+        nanoseconds?: number;
+      };
+
+      const maybeTimestamp = d as MaybeTimestamp;
+
       // Firestore Timestamp has toDate()
-      const maybeTimestamp = d as { toDate?: () => Date };
       if (maybeTimestamp && typeof maybeTimestamp.toDate === "function") {
         return maybeTimestamp.toDate().toLocaleString();
       }
-      const date = new Date(String(d));
-      if (isNaN(date.getTime())) return String(d);
-      return date.toLocaleString();
+      // Firestore-like object with toMillis()
+      if (maybeTimestamp && typeof maybeTimestamp.toMillis === "function") {
+        return new Date(maybeTimestamp.toMillis()).toLocaleString();
+      }
+      // Raw object with seconds/nanos
+      if (maybeTimestamp && typeof maybeTimestamp.seconds === "number") {
+        const millis =
+          maybeTimestamp.seconds * 1000 + Number(maybeTimestamp.nanoseconds || 0) / 1e6;
+        return new Date(millis).toLocaleString();
+      }
+
+      // number (ms since epoch)
+      if (typeof d === "number") return new Date(d).toLocaleString();
+
+      // numeric string with epoch millis
+      if (typeof d === "string" && /^\d+$/.test(d)) {
+        return new Date(Number(d)).toLocaleString();
+      }
+
+      // try generic parse
+      const parsed = new Date(String(d));
+      if (!isNaN(parsed.getTime())) return parsed.toLocaleString();
+
+      return String(d);
     } catch {
       return String(d);
     }
@@ -167,7 +202,9 @@ export default function NadeModal({
 
             <div className="text-xs text-neutral-400 text-right">
               <div>Creado: {formatDate(nade.createdAt)}</div>
-              <div className="mt-1">Por: {nade.createdByName ?? nade.createdByUid ?? "—"}</div>
+              <div className="mt-1">
+                Por: {nade.createdByName ?? nade.createdByUid ?? "—"}
+              </div>
             </div>
           </div>
 
@@ -181,15 +218,22 @@ export default function NadeModal({
             {nade.position && <Badge label="Position" value={nade.position} />}
             {nade.target && <Badge label="Target" value={nade.target} />}
             {nade.tickrate && <Badge label="Tickrate" value={nade.tickrate} />}
-            {typeof nade.jumpThrow !== "undefined" && nade.jumpThrow !== null && (
-              <Badge label="Jumpthrow" value={nade.jumpThrow ? "Sí" : "No"} />
-            )}
+            {typeof nade.jumpThrow !== "undefined" &&
+              nade.jumpThrow !== null && (
+                <Badge label="Jumpthrow" value={nade.jumpThrow ? "Sí" : "No"} />
+              )}
             {typeof nade.runSteps !== "undefined" && nade.runSteps !== null && (
               <Badge label="Run steps" value={String(nade.runSteps)} />
             )}
-            {nade.technique && <Badge label="Technique" value={humanize(nade.technique)} />}
-            {nade.movement && <Badge label="Movement" value={humanize(nade.movement)} />}
-            {nade.precision && <Badge label="Precision" value={humanize(nade.precision)} />}
+            {nade.technique && (
+              <Badge label="Technique" value={humanize(nade.technique)} />
+            )}
+            {nade.movement && (
+              <Badge label="Movement" value={humanize(nade.movement)} />
+            )}
+            {nade.precision && (
+              <Badge label="Precision" value={humanize(nade.precision)} />
+            )}
           </div>
 
           {/* extra actions and close */}
@@ -202,7 +246,31 @@ export default function NadeModal({
             >
               Copiar resumen
             </button>
-            <button onClick={onClose} className="px-3 py-1 rounded text-sm nm-button border">
+            <button
+              onClick={() => {
+                if (!user) {
+                  alert("Inicia sesión para guardar favoritos.");
+                  return;
+                }
+                toggleFavorite(nade.id).catch((e) => {
+                  console.error(e);
+                  alert("Error guardando favorito");
+                });
+              }}
+              className="px-3 py-1 rounded text-sm nm-button border flex items-center gap-2"
+              title={
+                isFavorite(nade.id) ? "Quitar favorito" : "Añadir favorito"
+              }
+            >
+              <span aria-hidden>{isFavorite(nade.id) ? "💖" : "🤍"}</span>
+              <span className="text-xs">
+                {isFavorite(nade.id) ? "Favorito" : "Guardar"}
+              </span>
+            </button>
+            <button
+              onClick={onClose}
+              className="px-3 py-1 rounded text-sm nm-button border"
+            >
               Cerrar
             </button>
           </div>

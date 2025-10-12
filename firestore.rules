@@ -1,22 +1,39 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    function isSignedIn() {
-      return request.auth != null;
-    }
 
-    // Colección de mapas
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() { return request.auth != null && request.auth.uid == "g7WrMDZNR5gfOx2BeMSBhyt58nB2"; }
+
+    // maps
     match /maps/{id} {
-      allow read: if true;              // cualquiera puede leer
-      allow write: if isSignedIn();     // solo usuarios logueados pueden crear/editar
+      allow read: if true;
+      allow write: if isSignedIn();
     }
 
-    // Colección de nades
+    // nades
     match /nades/{id} {
       allow read: if true;
       allow create: if isSignedIn();
-      allow update, delete: if isSignedIn() && request.auth.uid == resource.data.createdByUid;
+      allow update, delete: if isSignedIn() && (request.auth.uid == resource.data.createdByUid || isAdmin());
     }
+
+    // users root + subcollections (favorites)
+    match /users/{uid} {
+      // lectura/escritura del documento user (opcional)
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+
+      // subcolección favourites: /users/{uid}/favorites/{nadeId}
+      match /favorites/{nadeId} {
+        // Solo el usuario dueño (=uid) puede crear/leer/borrar sus favoritos
+        allow create: if request.auth != null && request.auth.uid == uid;
+        allow read:   if request.auth != null && request.auth.uid == uid;
+        allow delete: if request.auth != null && request.auth.uid == uid;
+        // no permitimos updates parciales: si quieres, puedes permitir update similar a create
+        allow update: if false;
+      }
+    }
+
+    // elimina cualquier match /favorites global que tuvieras antes para evitar conflictos
   }
 }

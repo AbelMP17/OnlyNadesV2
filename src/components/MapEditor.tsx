@@ -111,13 +111,6 @@ export default function MapEditor({
     setExpandedItems([]);
   }, [nades, forceExpandKey, singleToPos]);
 
-  function percentToClient(percent: Pos) {
-    const node = containerRef.current;
-    if (!node) return { x: 0, y: 0 };
-    const rect = node.getBoundingClientRect();
-    return { x: rect.left + (percent.x / 100) * rect.width, y: rect.top + (percent.y / 100) * rect.height };
-  }
-
   // overlay handler: recibe clicks en "zona libre"
   function handleOverlayPointerDown(e: React.PointerEvent) {
     if (!interactive || !containerRef.current) return;

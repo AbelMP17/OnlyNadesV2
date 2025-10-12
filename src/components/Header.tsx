@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/context/ThemeContext";
+import Image from "next/image";
 
 export default function Header() {
   const { user, loading, signInGoogle, logout } = useAuth();
@@ -11,7 +12,7 @@ export default function Header() {
 
   return (
     <header
-      className={`w-full border-b border-gray-600 ${theme === "light" ? "bg-transparent" : ""}`}
+      className={`sticky top-0 w-full border-b border-gray-600 backdrop-blur-[5px] ${theme === "light" ? "bg-gray-200/70" : ""} z-50`}
     >
       <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
         <Link
@@ -42,9 +43,10 @@ export default function Header() {
             <span className="text-sm text-neutral-500">Cargando…</span>
           ) : user ? (
             <div className="flex items-center gap-3">
-              <span className={`text-sm ${theme === "light" ? "text-neutral-900" : "text-neutral-300"} select-none`}>
+              <Link href="/profile" className={`text-sm ${theme === "light" ? "text-white bg-blue-700/70" : "text-neutral-300 bg-blue-400/20"} gap-2 px-3 py-1 nm-button border text-sm flex items-center-2 select-none  rounded-[50px]`}>
+                <Image src="/user.webp" width={20} height={20} alt="icon" />
                 {user.displayName ?? user.email}
-              </span>
+              </Link>
               <button
                 onClick={logout}
                 className="px-3 py-1 rounded border text-sm hover:bg-red-300 hover:border-white hover:text-black"
