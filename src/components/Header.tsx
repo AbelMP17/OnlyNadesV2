@@ -19,7 +19,7 @@ export default function Header() {
           href="/"
           className="relative font-bold text-lg flex justify-center items-center gap-1 group"
         >
-          <Image
+          <img
             src={theme === "light" ? "https://res.cloudinary.com/dursdihyg/image/upload/v1759516510/home_orwgbc.png" : "https://res.cloudinary.com/dursdihyg/image/upload/v1759516511/home_w_gzy3mw.png"}
             alt="home"
             className="w-[20px] h-[20px] absolute opacity-0 group-hover:opacity-100 left-0"

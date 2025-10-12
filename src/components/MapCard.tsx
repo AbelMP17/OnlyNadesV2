@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MapDoc } from "@/lib/types";
 import { useTheme } from "@/context/ThemeContext";
-import Image from "next/image";
 
 export default function MapCard({
   map,
@@ -48,7 +47,7 @@ export default function MapCard({
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent pointer-events-none" />
 
         {map.logoImage && (
-          <Image
+          <img
             src={map.logoImage}
             alt={`${map.name} logo`}
             className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2/3 opacity-95 pointer-events-none"
