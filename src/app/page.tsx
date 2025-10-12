@@ -9,6 +9,7 @@ import { MapDoc } from "@/lib/types";
 import MapCard from "@/components/MapCard";
 import FilterBar from "@/components/FilterBar";
 import { useTheme } from "@/context/ThemeContext";
+import Image from "next/image";
 
 export default function HomePage() {
   const [maps, setMaps] = useState<MapDoc[]>([]);
@@ -59,8 +60,6 @@ export default function HomePage() {
     };
   }, []);
 
-  if (loading) return <div className="p-8">Cargando…</div>;
-
   const types = Object.keys(counts).sort(
     (a, b) => (counts[b] ?? 0) - (counts[a] ?? 0)
   );
@@ -89,9 +88,14 @@ export default function HomePage() {
         onSelect={(t) => setSelectedType(t)}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className=" grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="relative grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {loading && (
+              <div className="absolute top-0 left-0 w-full h-full flex justify-center items-center">
+                <Image src="/cargando.webp" width={20} height={20} className="animate-spin" alt="loading icon" />
+              </div>
+            )}
             {maps.map((m) => {
               const countForThisType = selectedType
                 ? countsByMap[m.slug]?.[selectedType] ?? 0
