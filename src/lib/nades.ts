@@ -39,19 +39,17 @@ export async function createNade(payload: Partial<NadeDoc>) {
  *  Si pasas mapSlug solo contará ese mapa; si no, contará todas.
  */
 export async function getTypeCounts(mapSlug?: string): Promise<Record<string, number>> {
-  let q;
-  if (mapSlug) {
-    q = query(collection(db, "nades"), where("mapSlug", "==", mapSlug));
-  } else {
-    q = query(collection(db, "nades"));
-  }
+  const col = collection(db, "nades");
+  const q = mapSlug ? query(col, where("mapSlug", "==", mapSlug)) : query(col);
 
   const snap = await getDocs(q);
   const counts: Record<string, number> = {};
+
   snap.forEach((d) => {
-    const data = d.data() as any;
-    const t = (data.type as string) ?? "unknown";
-    counts[t] = (counts[t] || 0) + 1;
+    const data = d.data() as Record<string, unknown>;
+    const t = typeof data.type === "string" && data.type.trim() !== "" ? data.type : "unknown";
+    counts[t] = (counts[t] ?? 0) + 1;
   });
+
   return counts;
 }
