@@ -13,17 +13,15 @@ type MapEditorProps = {
   interactive?: boolean;
   selectionMode?: SelectionMode;
   forceExpandKey?: string | null;
-  /** si viene singleToPos, mostramos únicamente ese to (y sus froms relacionados) */
   singleToPos?: Pos | null;
 
-  /** temp marker props (managed by parent) */
   tempMarker?: Pos | null;
   tempMarkerMode?: "to" | "from" | undefined;
   allowTempMarker?: boolean;
   onTempPlace?: (which: "to" | "from", pos: Pos) => void;
 
-  onSelectCluster?: (clusterKey: string, items: NadeDoc[], center: Pos) => void; // click badge in select-to mode
-  onSelectFrom?: (nade: NadeDoc) => void; // click origin in select-from mode
+  onSelectCluster?: (clusterKey: string, items: NadeDoc[], center: Pos) => void;
+  onSelectFrom?: (nade: NadeDoc) => void;
 };
 
 type Cluster = { key: string; x: number; y: number; items: NadeDoc[] };
@@ -83,30 +81,25 @@ export default function MapEditor({
     // si singleToPos viene: mostrar SOLO el badge en singleToPos y expandir únicamente
     // los nades que realmente coincidan (comparación estricta).
     if (singleToPos) {
-      // umbral en porcentaje; bajar si ves demasiados coincidencias
-      const THRESHOLD = 0.9; // porcentaje distance threshold (ajústalo si quieres más/menos sensibilidad)
-
-      // redondeamos a 2 decimales para estabilidad (evita pequeños errores flotantes)
+      const THRESHOLD = 0.9;
       const sx = Math.round(singleToPos.x * 100) / 100;
       const sy = Math.round(singleToPos.y * 100) / 100;
 
-      const related = nades.filter(n => {
+      const related = nades.filter((n) => {
         if (!n.toPos) return false;
         const tx = Math.round(n.toPos.x * 100) / 100;
         const ty = Math.round(n.toPos.y * 100) / 100;
         const dx = tx - sx;
         const dy = ty - sy;
-        const dist = Math.sqrt(dx*dx + dy*dy);
+        const dist = Math.sqrt(dx * dx + dy * dy);
         return dist <= THRESHOLD;
       });
 
-      // Set expandedItems only to the genuinely related nades.
       setExpandedKey(null);
       setExpandedItems(related);
       return;
     }
 
-    // caso por defecto: no forzamos nada
     setExpandedKey(null);
     setExpandedItems([]);
   }, [nades, forceExpandKey, singleToPos]);
@@ -116,18 +109,25 @@ export default function MapEditor({
     if (!interactive || !containerRef.current) return;
     const native = e.nativeEvent as PointerEvent;
     const pos = clientToPercent((native as unknown) as MouseEvent, containerRef.current);
-    // notificamos al padre si es overlay libre
+
+    // Si estamos en select-to y el usuario hace click fuera para crear un nuevo "to",
+    // debemos limpiar cualquier cluster expandido para que no se mantenga la selección previa.
+    // Lo hacemos LOCALMENTE en el editor (además del parent handler) para evitar UI stale.
+    if (selectionMode === "select-to") {
+      setExpandedKey(null);
+      setExpandedItems([]);
+    }
+
+    // Notificamos al padre (quien maneja to/from temp)
     onTempPlace?.(selectionMode === "select-to" ? "to" : "from", pos);
   }
 
   function handleClusterClick(cluster: Cluster, e: React.MouseEvent) {
     e.stopPropagation();
-    // in select-to mode selecting cluster must not expand; call parent directly
     if (selectionMode === "select-to") {
       onSelectCluster?.(cluster.key, cluster.items, { x: cluster.x, y: cluster.y });
       return;
     }
-    // otherwise toggle expand for browsing
     if (expandedKey === cluster.key) {
       setExpandedKey(null);
       setExpandedItems([]);
@@ -145,7 +145,6 @@ export default function MapEditor({
     }
   }
 
-  // clustersToRender: si singleToPos existe, NO renderizamos clusters globales
   const clustersToRender = singleToPos
     ? []
     : (selectionMode === "select-from" && forceExpandKey ? clusters.filter(c => c.key === forceExpandKey) : clusters);
@@ -163,7 +162,11 @@ export default function MapEditor({
       }}
     >
       {/* overlay captura clicks en zona libre */}
-      <div className="absolute inset-0 z-10" onPointerDown={(e) => handleOverlayPointerDown(e)} style={{ background: "transparent", touchAction: "none" }} />
+      <div
+        className="absolute inset-0 z-10"
+        onPointerDown={(e) => handleOverlayPointerDown(e)}
+        style={{ background: "transparent", touchAction: "none" }}
+      />
 
       {/* líneas */}
       <svg className="absolute inset-0 w-full h-full pointer-events-none z-20">
@@ -213,7 +216,7 @@ export default function MapEditor({
         </div>
       ))}
 
-      {/* origenes (fromPos) — si hay expandedItems (ya sea por forceExpandKey o por singleToPos relacionados) */}
+      {/* origenes (fromPos) */}
       {(expandedItems.length > 0 ? expandedItems : []).map((n) => {
         if (!n.fromPos) return null;
         return (

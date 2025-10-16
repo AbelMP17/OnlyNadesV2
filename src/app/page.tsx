@@ -93,7 +93,13 @@ export default function HomePage() {
           <div className="relative grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {loading && (
               <div className="absolute top-0 left-0 w-full h-full flex justify-center items-center">
-                <Image src="/cargando.webp" width={20} height={20} className="animate-spin" alt="loading icon" />
+                <Image
+                  src="/cargando.webp"
+                  width={20}
+                  height={20}
+                  className="animate-spin"
+                  alt="loading icon"
+                />
               </div>
             )}
             {maps.map((m) => {
@@ -121,27 +127,56 @@ export default function HomePage() {
 
         <aside>
           <div
-            className={`p-4 rounded-lg ${
+            className={`rounded-lg ${
               theme === "light"
                 ? "bg-white/90 text-black"
                 : "bg-neutral-900 text-white"
             } shadow`}
           >
-            <h3 className="font-semibold mb-2">Atajos</h3>
-            <p className="text-sm mb-2">
-              Selecciona un tipo arriba y luego haz click en un mapa para
+            <h3 className="font-semibold p-3 pb-0">Atajos</h3>
+            <p className="text-sm mb-2 p-3">
+             Selecciona un tipo arriba y luego haz click en un mapa para
               abrirlo ya filtrado.
             </p>
-            <div className="mt-3">
-              <h4 className="font-medium">Tipos populares</h4>
-              <ul className="mt-2 text-sm space-y-1">
-                {types.slice(0, 5).map((t) => (
-                  <li key={t} className="flex justify-between">
-                    <span className="capitalize">{t}</span>
-                    <span>{counts[t] ?? 0}</span>
-                  </li>
-                ))}
-              </ul>
+
+            <div
+              className={`flex flex-col justify-center items-center md:col-span-1 font-extralight shadow-lg ${
+                theme === "light"
+                  ? "bg-gray-800/60 shadow-black text-white"
+                  : "bg-gray-800/60 shadow-gray-700"
+              } backdrop-blur-xs w-full h-fit z-20 rounded-xl p-5 gap-2 border-y border-white`}
+            >
+              <h4 className="font-medium p-3 uppercase italic text-xl">Support Us</h4>
+              <div className="w-full flex justify-center items-center gap-2">
+                <a
+                  href="https://www.youtube.com/@falconzz8859"
+                  target="_blank"
+                  className="bg-white nm-button w-[40px] hover:w-[140px] h-[40px] rounded-full  font-bold relative overflow-hidden text-transparent hover:text-black group flex justify-end items-center uppercase"
+                >
+                  <Image
+                    src="/youtube.webp"
+                    alt="patreon"
+                    width={32}
+                    height={32}
+                    className="absolute left-1 top-1"
+                  />
+                  Youtube
+                </a>
+                <a
+                  href="https://patreon.com/OnlyNades?utm_medium=unknown&utm_source=join_link&utm_campaign=creatorshare_creator&utm_content=copyLink"
+                  target="_blank"
+                  className="bg-white nm-button w-[40px] hover:w-[120px] h-[40px] rounded-full  font-bold relative overflow-hidden text-transparent hover:text-black group flex justify-end items-center uppercase"
+                >
+                  <Image
+                    src="/patreon.webp"
+                    alt="patreon"
+                    width={32}
+                    height={32}
+                    className="absolute left-1 top-1"
+                  />
+                  atreon
+                </a>
+              </div>
             </div>
           </div>
         </aside>

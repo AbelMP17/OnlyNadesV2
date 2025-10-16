@@ -1,8 +1,8 @@
-// src/app/map/[slug]/page.tsx (o la ruta que uses para MapDetailPage)
+// src/app/map/[slug]/page.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { getNadesByMap } from "@/lib/nades";
 import type { NadeDoc, MapDoc } from "@/lib/types";
 import MarkerPreview from "@/components/MarkerPreview";
@@ -18,12 +18,12 @@ const TYPE_ORDER = ["smoke", "flash", "molotov", "he", "decoy"];
 
 export default function MapDetailPage() {
   const { slug } = useParams<{ slug: string }>();
+  const searchParams = useSearchParams();
+
   const [nades, setNades] = useState<NadeDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [hovered, setHovered] = useState<NadeDoc | null>(null);
-  const [hoverCoords, setHoverCoords] = useState<
-    { x: number; y: number } | undefined
-  >(undefined);
+  const [hoverCoords, setHoverCoords] = useState<{ x: number; y: number } | undefined>(undefined);
   const [openNade, setOpenNade] = useState<NadeDoc | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [map, setMap] = useState<MapDoc | null>(null);
@@ -36,13 +36,28 @@ export default function MapDetailPage() {
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [selectedSide, setSelectedSide] = useState<string | null>(null);
 
+  // leer query params y aplicarlos al estado (se ejecuta cuando cambian los searchParams)
+  useEffect(() => {
+    if (!searchParams) return;
+    const t = searchParams.get("type");
+    const s = searchParams.get("side");
+    if (t) setSelectedType(String(t).toLowerCase());
+    if (s) setSelectedSide(String(s).toUpperCase());
+  }, [searchParams]);
+
   useEffect(() => {
     if (!slug) return;
     setLoading(true);
-    getNadesByMap(slug).then((res) => {
-      setNades(res);
-      setLoading(false);
-    });
+    getNadesByMap(slug)
+      .then((res) => {
+        setNades(res);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Error loading nades for map", slug, err);
+        setLoading(false);
+      });
+
     getMaps().then((maps) => {
       const found = maps.find((m) => m.slug === slug);
       if (found) setMap(found);
@@ -72,10 +87,8 @@ export default function MapDetailPage() {
   // nades a pasar al MapViewer (filtradas por type & side)
   const filteredNades = useMemo(() => {
     return nades.filter((n) => {
-      if (selectedType && (n.type ?? "").toLowerCase() !== selectedType)
-        return false;
-      if (selectedSide && (n.side ?? "").toUpperCase() !== selectedSide)
-        return false;
+      if (selectedType && (n.type ?? "").toLowerCase() !== selectedType) return false;
+      if (selectedSide && (n.side ?? "").toUpperCase() !== selectedSide) return false;
       return true;
     });
   }, [nades, selectedType, selectedSide]);
@@ -101,17 +114,9 @@ export default function MapDetailPage() {
     <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
       {/* Sidebar */}
       <aside>
-        <div
-          className={`${
-            theme === "light" ? "bg-white/50" : "bg-white/5"
-          } p-4 rounded mb-4 backdrop-blur-md`}
-        >
+        <div className={`${theme === "light" ? "bg-white/50" : "bg-white/5"} p-4 rounded mb-4 backdrop-blur-md`}>
           <h2 className="text-lg font-bold">{map?.name ?? slug}</h2>
-          <p
-            className={`text-sm ${
-              theme === "light" ? "text-neutral-800" : "text-neutral-200"
-            }`}
-          >
+          <p className={`text-sm ${theme === "light" ? "text-neutral-800" : "text-neutral-200"}`}>
             Find the best {map?.name ?? slug} smokes, molotovs, flashbangs, and HE grenades for Counter-Strike 2. Learn the best nade lineups on OnlyNades.
           </p>
 
@@ -121,25 +126,15 @@ export default function MapDetailPage() {
                 onClick={() => setWizardOpen(true)}
                 className="px-3 py-2 m-auto rounded bg-blue-600 hover:bg-blue-700 hover:rounded-[25px] text-white relative font-bold text-lg flex justify-center items-center gap-1 group"
               >
-                <p className="absolute opacity-0 group-hover:opacity-100 left-3">
-                  +
-                </p>
-                <p className="group-hover:ml-6 group-hover:tracking-tighter">
-                  Submit Nade
-                </p>
+                <p className="absolute opacity-0 group-hover:opacity-100 left-3">+</p>
+                <p className="group-hover:ml-6 group-hover:tracking-tighter">Submit Nade</p>
               </button>
             ) : null}
           </div>
         </div>
 
         {/* Sección: contadores por tipo (clickable) */}
-        <div
-          className={`${
-            theme === "light"
-              ? "bg-white/50 text-black"
-              : "bg-white/5 text-white"
-          } p-4 rounded mb-4 backdrop-blur-md`}
-        >
+        <div className={`${theme === "light" ? "bg-white/50 text-black" : "bg-white/5 text-white"} p-4 rounded mb-4 backdrop-blur-md`}>
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-semibold">Nades ({nades.length})</h3>
             <div className="text-xs font-semibold">Filtrar por tipo</div>
@@ -155,8 +150,17 @@ export default function MapDetailPage() {
                     key={t}
                     onClick={() => toggleTypeFilter(t)}
                     className={`w-full px-3 py-2 rounded-lg hover:rounded-[25px] text-xs font-medium transition transform ${
-                      active && selectedType === "smoke" ? "bg-gray-600 scale-105 text-white"
-                        : active && selectedType === "flash" ? "bg-yellow-200 scale-105 text-black": active && selectedType === "molotov" ? "bg-red-400 scale-105":  active && selectedType === "he" ? "bg-green-400 scale-105" : active && selectedType === "he" ? "bg-green-400 scale-105 text-black" : active && selectedType === "decoy" ? "bg-green-700 scale-105 text-white" :"bg-white/40 hover:bg-white/70"
+                      active && selectedType === "smoke"
+                        ? "bg-gray-600 scale-105 text-white"
+                        : active && selectedType === "flash"
+                        ? "bg-yellow-200 scale-105 text-black"
+                        : active && selectedType === "molotov"
+                        ? "bg-red-400 scale-105"
+                        : active && selectedType === "he"
+                        ? "bg-green-400 scale-105"
+                        : active && selectedType === "decoy"
+                        ? "bg-green-700 scale-105 text-white"
+                        : "bg-white/40 hover:bg-white/70"
                     }`}
                     aria-pressed={active}
                     title={`Mostrar ${t} (${count})`}
@@ -168,10 +172,7 @@ export default function MapDetailPage() {
             </div>
 
             <div className="flex justify-between items-center gap-2 mt-2">
-              <button
-                onClick={clearTypeFilter}
-                className="px-2 py-1 text-[14px] rounded bg-transparent border border-white/40 hover:bg-red-400/40"
-              >
+              <button onClick={clearTypeFilter} className="px-2 py-1 text-[14px] rounded bg-transparent border border-white/40 hover:bg-red-400/40">
                 Limpiar filtro tipo
               </button>
               <div className="text-xs">
@@ -182,13 +183,7 @@ export default function MapDetailPage() {
         </div>
 
         {/* Nueva sección: contadores por side (T / CT) */}
-        <div
-          className={`${
-            theme === "light"
-              ? "bg-white/50 text-black"
-              : "bg-white/5 text-white"
-          } p-4 rounded mb-4 backdrop-blur-md`}
-        >
+        <div className={`${theme === "light" ? "bg-white/50 text-black" : "bg-white/5 text-white"} p-4 rounded mb-4 backdrop-blur-md`}>
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-semibold">Filtrar por equipo</h3>
             <div className="text-xs text-neutral-400">T / CT</div>
@@ -197,11 +192,7 @@ export default function MapDetailPage() {
           <div className="flex gap-2 items-center">
             <button
               onClick={() => toggleSideFilter("T")}
-              className={`w-full px-3 py-2 rounded-lg hover:rounded-[25px] text-xs font-medium transition transform ${
-                selectedSide === "T"
-                  ? "bg-orange-400 text-black scale-105"
-                  : "bg-white/40 hover:bg-white/70"
-              }`}
+              className={`w-full px-3 py-2 rounded-lg hover:rounded-[25px] text-xs font-medium transition transform ${selectedSide === "T" ? "bg-orange-400 text-black scale-105" : "bg-white/40 hover:bg-white/70"}`}
               aria-pressed={selectedSide === "T"}
             >
               T · {sideCounts["T"] ?? 0}
@@ -209,30 +200,21 @@ export default function MapDetailPage() {
 
             <button
               onClick={() => toggleSideFilter("CT")}
-              className={`w-full px-3 py-2 rounded-lg hover:rounded-[25px] text-xs font-medium transition transform ${
-                selectedSide === "CT"
-                  ? "bg-blue-500 text-black scale-105"
-                  : "bg-white/40 hover:bg-white/70"
-              }`}
+              className={`w-full px-3 py-2 rounded-lg hover:rounded-[25px] text-xs font-medium transition transform ${selectedSide === "CT" ? "bg-blue-500 text-black scale-105" : "bg-white/40 hover:bg-white/70"}`}
               aria-pressed={selectedSide === "CT"}
             >
               CT · {sideCounts["CT"] ?? 0}
             </button>
-
-            
           </div>
+
           <div className="flex justify-between items-center gap-2 mt-2">
-            <button
-              onClick={clearSideFilter}
-              className="px-2 py-1 text-[15px] rounded bg-transparent border border-white/40 hover:bg-red-400/40"
-            >
+            <button onClick={clearSideFilter} className="px-2 py-1 text-[15px] rounded bg-transparent border border-white/40 hover:bg-red-400/40">
               Limpiar filtro equipo
             </button>
             <div className="mt-2 text-xs">
-            <b>Mostrando:</b> {selectedSide ?? "Ambos"}
+              <b>Mostrando:</b> {selectedSide ?? "Ambos"}
+            </div>
           </div>
-          </div>
-          
         </div>
       </aside>
 
@@ -249,26 +231,14 @@ export default function MapDetailPage() {
         />
 
         {/* preview when hover/tap */}
-        <MarkerPreview
-          nade={hovered}
-          coords={hoverCoords}
-          onOpen={(n) => setOpenNade(n)}
-        />
+        <MarkerPreview nade={hovered} coords={hoverCoords} onOpen={(n) => setOpenNade(n)} />
 
         {/* modal open */}
-        {openNade && (
-          <NadeModal nade={openNade} onClose={() => setOpenNade(null)} />
-        )}
+        {openNade && <NadeModal nade={openNade} onClose={() => setOpenNade(null)} />}
 
         {/* wizard for admin */}
         {wizardOpen && map && (
-          <NadeWizard
-            open={wizardOpen}
-            onClose={() => setWizardOpen(false)}
-            mapSlug={slug}
-            mapImage={map.mapImage ?? ""}
-            existingNades={nades}
-          />
+          <NadeWizard open={wizardOpen} onClose={() => setWizardOpen(false)} mapSlug={slug} mapImage={map.mapImage ?? ""} existingNades={nades} />
         )}
       </section>
     </div>

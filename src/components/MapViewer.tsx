@@ -57,10 +57,9 @@ export default function MapViewer({ mapImage, nades, hoverPreview, onOpenNade }:
       setExpandedItems([]);
       return;
     }
-    // expandir solo este cluster y ocultar los demás (clustersToRender lo hará)
+    // expandir solo este cluster
     setExpandedKey(cluster.key);
     setExpandedItems(cluster.items);
-    // no mostramos preview aquí; preview solo para fromPos
   }
 
   function handleOriginClick(n: NadeDoc, e: React.MouseEvent) {
@@ -71,9 +70,49 @@ export default function MapViewer({ mapImage, nades, hoverPreview, onOpenNade }:
   // Si hay un cluster expandido, solo renderizamos ese cluster; si no, todos.
   const clustersToRender = expandedKey ? clusters.filter((c) => c.key === expandedKey) : clusters;
 
+  /* -----------------------
+     Deseleccionar al hacer click fuera / en fondo
+     - Si click fuera de container => deseleccionar
+     - Si click dentro del container pero no sobre un element con data-role="map-marker" => deseleccionar
+     ----------------------- */
+  useEffect(() => {
+    function onDocPointerDown(ev: PointerEvent) {
+      if (!expandedKey) return;
+      const node = containerRef.current;
+      if (!node) return;
+      const target = ev.target as Node | null;
+      if (!target) return;
+      // Si el click está fuera del contenedor, deselecciona
+      if (!node.contains(target)) {
+        setExpandedKey(null);
+        setExpandedItems([]);
+      }
+      // si está dentro y encima de un marker, no hacemos nada (cluster/origin handlers lo gestionan)
+    }
+
+    window.addEventListener("pointerdown", onDocPointerDown);
+    return () => window.removeEventListener("pointerdown", onDocPointerDown);
+  }, [expandedKey]);
+
+  // Handler en el propio contenedor: si haces click en el fondo (no sobre un marker),
+  // cerramos la expansión. Usamos pointerDown para cubrir touch/click.
+  function onContainerPointerDown(e: React.PointerEvent) {
+    if (!expandedKey) return;
+    const el = e.target as HTMLElement | null;
+    if (!el) return;
+    // si el elemento clicado o alguno de sus padres tiene data-role="map-marker", NO deseleccionar
+    const isOnMarker = el.closest && (el.closest('[data-role="map-marker"]') as HTMLElement | null);
+    if (!isOnMarker) {
+      setExpandedKey(null);
+      setExpandedItems([]);
+    }
+    // si es marker, dejamos que los handlers específicos manejen la interacción
+  }
+
   return (
     <div
       ref={containerRef}
+      onPointerDown={onContainerPointerDown}
       className="relative w-full rounded-lg overflow-hidden bg-black/70"
       style={{
         backgroundImage: `url(${mapImage})`,
@@ -114,7 +153,7 @@ export default function MapViewer({ mapImage, nades, hoverPreview, onOpenNade }:
           className="absolute z-30 cursor-pointer select-none"
           data-role="map-marker"
         >
-          <div className={`md:w-7 md:h-7 w-4 h-4 rounded-full bg-yellow-400 border-2 border-black shadow-md flex items-center justify-center text-sm font-semibold text-black`}>
+          <div className={`md:w-7 md:h-7 w-4 h-4 hover:scale-125 rounded-full bg-yellow-400 border-2 border-black shadow-md flex items-center justify-center text-sm font-semibold text-black`}>
             {c.items.length > 1 ? c.items.length : ""}
           </div>
         </div>
@@ -140,7 +179,7 @@ export default function MapViewer({ mapImage, nades, hoverPreview, onOpenNade }:
             className="absolute z-40 cursor-pointer select-none"
             data-role="map-marker"
           >
-            <div className={`w-4 h-4 rounded-full ${n.side?.toLowerCase() === "ct" ? "bg-blue-800" : "bg-orange-400"} border-2 border-black shadow flex items-center justify-center text-xs font-semibold text-black`}></div>
+            <div className={`w-4 h-4 rounded-full ${n.side?.toLowerCase() === "ct" ? "bg-blue-800" : "bg-orange-400"} border-2 hover:scale-125 border-black shadow flex items-center justify-center text-xs font-semibold text-black`}></div>
           </div>
         );
       })}

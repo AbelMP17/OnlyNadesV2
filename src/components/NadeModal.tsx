@@ -1,7 +1,7 @@
 // src/components/NadeModal.tsx
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import type { NadeDoc, Pos } from "@/lib/types";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/lib/auth";
@@ -18,6 +18,8 @@ export default function NadeModal({
   const { user } = useAuth();
   const uid = user?.uid ?? null;
   const { isFavorite, toggleFavorite } = useFavorites(uid);
+  const [copyLinkText, setCopyLinkText] = useState("Copiar URL Vídeo");
+  const [copyResume, setCopyResume] = useState("Copiar Resumen");
 
   /* --------------------
      Helpers tipados
@@ -87,7 +89,8 @@ export default function NadeModal({
       // Raw object with seconds/nanos
       if (maybeTimestamp && typeof maybeTimestamp.seconds === "number") {
         const millis =
-          maybeTimestamp.seconds * 1000 + Number(maybeTimestamp.nanoseconds || 0) / 1e6;
+          maybeTimestamp.seconds * 1000 +
+          Number(maybeTimestamp.nanoseconds || 0) / 1e6;
         return new Date(millis).toLocaleString();
       }
 
@@ -147,10 +150,10 @@ export default function NadeModal({
       <div
         className={`${
           theme === "light" ? "bg-white" : "bg-neutral-900"
-        } rounded-lg max-w-5xl w-full p-4 grid md:grid-cols-2 gap-4`}
+        } rounded-lg  w-full p-4 grid md:grid-cols-3 gap-4`}
       >
         {/* Media */}
-        <div>
+        <div className="col-span-2">
           {isDirectVideo(nade.videoUrl ?? undefined) ? (
             <div className="mt-2 aspect-video">
               <video
@@ -164,33 +167,43 @@ export default function NadeModal({
               />
             </div>
           ) : isYouTube(nade.videoUrl ?? undefined) && youtubeId ? (
-            <div className="mt-2 aspect-video rounded overflow-hidden bg-black">
-              <iframe
-                src={iframeSrc}
-                title={nade.title ?? "Nade preview"}
-                allow="autoplay; encrypted-media; picture-in-picture"
-                allowFullScreen
-                className="w-full h-full border-0 pointer-events-none"
-              />
-            </div>
+            <>
+              <div className="mt-2 aspect-video rounded-xl overflow-hidden bg-black">
+                <iframe
+                  src={iframeSrc}
+                  title={nade.title ?? "Nade preview"}
+                  allow="autoplay; encrypted-media; picture-in-picture"
+                  allowFullScreen
+                  className="w-full h-full border-0 pointer-events-none"
+                />
+              </div>
+              <div className="mt-3 flex gap-2">
+                {nade.videoUrl && (
+                  <button
+                    onClick={() => {
+                      copy(nade.videoUrl);
+                      setCopyLinkText("Copiado!");
+                      setTimeout(() => {
+                        setCopyLinkText("Copiar URL Vídeo");
+                      }, 1000);
+                    }}
+                    className={`px-3 py-1 rounded border text-sm nm-button ${
+                      copyLinkText.includes("iado") ? "bg-blue-300/20" : ""
+                    }`}
+                    title="Copiar URL del vídeo"
+                  >
+                    {copyLinkText}
+                  </button>
+                )}
+              </div>
+            </>
           ) : null}
 
           {/* quick action buttons under media */}
-          <div className="mt-3 flex gap-2">
-            {nade.videoUrl && (
-              <button
-                onClick={() => copy(nade.videoUrl)}
-                className="px-3 py-1 rounded border text-sm nm-button"
-                title="Copiar URL del vídeo"
-              >
-                Copiar URL vídeo
-              </button>
-            )}
-          </div>
         </div>
 
         {/* Info */}
-        <div className="flex flex-col justify-between">
+        <div className="flex flex-col justify-between p-10 bg-black/30 rounded-xl">
           <div className="flex justify-between items-start gap-4">
             <div>
               <h2 className="text-2xl font-bold">{nade.title ?? "Untitled"}</h2>
@@ -241,10 +254,16 @@ export default function NadeModal({
             <button
               onClick={() => {
                 copy(constructShareText(nade));
+                setCopyResume("Copiado!");
+                setTimeout(() => {
+                  setCopyResume("Copiar Resumen");
+                }, 1000);
               }}
-              className="px-3 py-1 rounded text-sm nm-button border"
+              className={`px-3 py-1 rounded border text-sm nm-button ${
+                copyResume.includes("iado") ? "bg-blue-300/20" : ""
+              }`}
             >
-              Copiar resumen
+              {copyResume}
             </button>
             <button
               onClick={() => {
@@ -269,7 +288,7 @@ export default function NadeModal({
             </button>
             <button
               onClick={onClose}
-              className="px-3 py-1 rounded text-sm nm-button border"
+              className="px-3 py-1 rounded text-sm nm-button border bg-red-400/60"
             >
               Cerrar
             </button>
